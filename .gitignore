@@ -1,4 +1,5 @@
 .DS_Store
+Build
 Podfile.lock
 Pods
 xcuserdata
