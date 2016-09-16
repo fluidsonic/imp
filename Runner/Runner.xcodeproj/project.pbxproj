@@ -457,7 +457,6 @@
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Bundles";
 				PRODUCT_BUNDLE_IDENTIFIER = imp.RunnerBundle;
 				PRODUCT_NAME = "imp-cli";
-				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 2.3;
 				WRAPPER_EXTENSION = bundle;
 			};
@@ -472,7 +471,6 @@
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Bundles";
 				PRODUCT_BUNDLE_IDENTIFIER = imp.RunnerBundle;
 				PRODUCT_NAME = "imp-cli";
-				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 2.3;
 				WRAPPER_EXTENSION = bundle;
 			};
