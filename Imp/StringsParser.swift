@@ -111,6 +111,10 @@ public struct StringsParser {
 	
 
 	public func parse(data data: NSData) throws -> [Key : Strings.Item] {
+		guard data.length > 0 else {
+			return [:]
+		}
+
 		let content: AnyObject
 		do {
 			content = try NSPropertyListSerialization.propertyListWithData(data, options: .Immutable, format: nil)
@@ -274,8 +278,13 @@ public struct StringsParser {
 
 
 
-	public struct Error: ErrorType {
+	public struct Error: CustomStringConvertible, ErrorType {
 
 		public var message: String
+
+
+		public var description: String {
+			return "Strings: \(message)"
+		}
 	}
 }

@@ -8,9 +8,11 @@ public class Runner: NSObject {
 	public static func run() {
 		let destinationOption = Option("destination", DestinationOption.console, flag: "o", description: "Path of the file to write the generated code to (defaults to 'console').")
 		let generatorOption = Option("generator", GeneratorOption.swift2, flag: "g", description: "What generator to use for emitting the generated code (available generators: swift2).")
+		let typeNameOption = Option("typeName", "Strings", description: "How the type should be named which contains all strings and namespaces.")
+		let visibilityOption = Option("visibility", SwiftStringsGenerator.Visibility.internalVisibility, description: "Visibility the type should have which contains all strings and namespaces (internal or public).")
 		let inputFileArgument = Argument<String>("input", description: "Path to the .strings file to be parsed.")
 
-		let stringsCommand = command(destinationOption, generatorOption, inputFileArgument) { destinationOption, generatorOption, inputFile in
+		let stringsCommand = command(destinationOption, generatorOption, typeNameOption, visibilityOption, inputFileArgument) { destinationOption, generatorOption, typeName, visibility, inputFile in
 			guard let data = NSData(contentsOfFile: inputFile) else {
 				throw Error(message: "Cannot load contents of file '\(inputFile)'")
 			}
@@ -22,7 +24,7 @@ public class Runner: NSObject {
 
 			let generator: StringsGenerator
 			switch generatorOption {
-			case .swift2: generator = SwiftStringsGenerator(typeName: "Strings", visibility: .internalVisibility)
+			case .swift2: generator = SwiftStringsGenerator(typeName: typeName, visibility: visibility)
 			}
 
 			let output = generator.generate(for: skeleton)
@@ -38,9 +40,14 @@ public class Runner: NSObject {
 
 
 
-	private struct Error: ErrorType {
+	private struct Error: CustomStringConvertible, ErrorType {
 
 		private var message: String
+
+
+		private var description: String {
+			return message
+		}
 	}
 }
 
@@ -110,6 +117,30 @@ private enum DestinationOption: ArgumentConvertible {
 
 			let data = content.dataUsingEncoding(NSUTF8StringEncoding, allowLossyConversion: true)!
 			try data.writeToURL(path, options: .AtomicWrite)
+		}
+	}
+}
+
+
+extension SwiftStringsGenerator.Visibility: ArgumentConvertible {
+
+	public init(parser: ArgumentParser) throws {
+		guard let rawValue = parser.shift() else {
+			throw ArgumentError.MissingValue(argument: nil)
+		}
+
+		switch rawValue {
+		case "internal": self = .internalVisibility
+		case "public":   self = .publicVisibility
+		default:         throw Runner.Error(message: "Unknown visibility '\(rawValue)'")
+		}
+	}
+
+
+	public var description: String {
+		switch self {
+		case .internalVisibility: return "internal"
+		case .publicVisibility:   return "public"
 		}
 	}
 }

@@ -12,7 +12,6 @@
 		49A0137B1D4B835800A7D814 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 49A0137A1D4B835800A7D814 /* main.m */; };
 		49A013941D4B8C0700A7D814 /* Commander.framework in CopyFiles */ = {isa = PBXBuildFile; fileRef = 49A013911D4B8C0700A7D814 /* Commander.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		49A013951D4B8C0700A7D814 /* Imp.framework in CopyFiles */ = {isa = PBXBuildFile; fileRef = 49A013921D4B8C0700A7D814 /* Imp.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		49A013961D4B8C0700A7D814 /* PathKit.framework in CopyFiles */ = {isa = PBXBuildFile; fileRef = 49A013931D4B8C0700A7D814 /* PathKit.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		49A013971D4B8CCC00A7D814 /* imp-cli in CopyFiles */ = {isa = PBXBuildFile; fileRef = 49A013771D4B835800A7D814 /* imp-cli */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		E3AE5981A167F7D32B27DDDD /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A6BE6132D025DC8EB7ECE10D /* Pods_Runner.framework */; };
 /* End PBXBuildFile section */
@@ -56,7 +55,6 @@
 				49A013941D4B8C0700A7D814 /* Commander.framework in CopyFiles */,
 				49A013951D4B8C0700A7D814 /* Imp.framework in CopyFiles */,
 				492A3EE41D4BA11100F7CAE8 /* JetPack.framework in CopyFiles */,
-				49A013961D4B8C0700A7D814 /* PathKit.framework in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -66,14 +64,13 @@
 		0773BA9EF3403050F8BE220E /* Pods-Runner.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug.xcconfig"; path = "../Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"; sourceTree = "<group>"; };
 		0DEF300B776CD9EE62372DE0 /* Pods-RunnerBundle.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerBundle.debug.xcconfig"; path = "../Pods/Target Support Files/Pods-RunnerBundle/Pods-RunnerBundle.debug.xcconfig"; sourceTree = "<group>"; };
 		1F898749631763F6BEF501B9 /* Pods_RunnerBundle.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerBundle.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		492A3EE31D4BA11100F7CAE8 /* JetPack.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; name = JetPack.framework; path = "/Users/marc/Library/Developer/Xcode/DerivedData/Runner-bsbmdrfphjktbsbghnxycdtfkvhz/Build/Products/Debug/JetPack/JetPack.framework"; sourceTree = "<absolute>"; };
+		492A3EE31D4BA11100F7CAE8 /* JetPack.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; name = JetPack.framework; path = JetPack/JetPack.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		49A013771D4B835800A7D814 /* imp-cli */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "imp-cli"; sourceTree = BUILT_PRODUCTS_DIR; };
 		49A0137A1D4B835800A7D814 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		49A013851D4B83A100A7D814 /* imp-cli.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "imp-cli.bundle"; sourceTree = BUILT_PRODUCTS_DIR; };
 		49A013871D4B83A100A7D814 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		49A013911D4B8C0700A7D814 /* Commander.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; name = Commander.framework; path = "/Users/marc/Library/Developer/Xcode/DerivedData/Runner-bsbmdrfphjktbsbghnxycdtfkvhz/Build/Products/Debug/Commander/Commander.framework"; sourceTree = "<absolute>"; };
-		49A013921D4B8C0700A7D814 /* Imp.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; name = Imp.framework; path = "/Users/marc/Library/Developer/Xcode/DerivedData/Runner-bsbmdrfphjktbsbghnxycdtfkvhz/Build/Products/Debug/Imp/Imp.framework"; sourceTree = "<absolute>"; };
-		49A013931D4B8C0700A7D814 /* PathKit.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; name = PathKit.framework; path = "/Users/marc/Library/Developer/Xcode/DerivedData/Runner-bsbmdrfphjktbsbghnxycdtfkvhz/Build/Products/Debug/PathKit/PathKit.framework"; sourceTree = "<absolute>"; };
+		49A013911D4B8C0700A7D814 /* Commander.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; name = Commander.framework; path = Commander/Commander.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		49A013921D4B8C0700A7D814 /* Imp.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; name = Imp.framework; path = Imp/Imp.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		6489ED4E6E5ABEFFB8FBA793 /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "../Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
 		A6BE6132D025DC8EB7ECE10D /* Pods_Runner.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Runner.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		D9700F47286B781CBD742FBB /* Pods-RunnerBundle.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerBundle.release.xcconfig"; path = "../Pods/Target Support Files/Pods-RunnerBundle/Pods-RunnerBundle.release.xcconfig"; sourceTree = "<group>"; };
@@ -154,7 +151,6 @@
 				49A013911D4B8C0700A7D814 /* Commander.framework */,
 				49A013921D4B8C0700A7D814 /* Imp.framework */,
 				492A3EE31D4BA11100F7CAE8 /* JetPack.framework */,
-				49A013931D4B8C0700A7D814 /* PathKit.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";

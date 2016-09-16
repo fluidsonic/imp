@@ -20,7 +20,14 @@ public struct SwiftStringsGenerator: StringsGenerator {
 
 	public func generate(for skeleton: StringsSkeleton) -> String {
 		let buffer = StrongReference("")
-		buffer.target += "import JetPack\n\n"
+
+		if namespaceUsesPluralizedStrings(skeleton.rootNamespace) {
+			buffer.target += "import JetPack"
+		}
+		else {
+			buffer.target += "import Foundation"
+		}
+		buffer.target += "\n\n"
 
 		generate(for: skeleton.rootNamespace, buffer: buffer, parentKeyPath: [], lastKeyComponent: nil, linePrefix: "")
 
@@ -56,7 +63,7 @@ public struct SwiftStringsGenerator: StringsGenerator {
 		let keyPath: KeyPath
 
 		if let lastKeyComponent = lastKeyComponent {
-			enumName = lastKeyComponent.value.capitalizedString
+			enumName = lastKeyComponent.value.firstCharacterCapitalized
 			keyPath = parentKeyPath + lastKeyComponent
 		}
 		else {
@@ -452,5 +459,19 @@ public struct SwiftStringsGenerator: StringsGenerator {
 
 		case internalVisibility
 		case publicVisibility
+	}
+}
+
+
+
+private extension String {
+
+	private var firstCharacterCapitalized: String {
+		guard !isEmpty else {
+			return self
+		}
+
+		let breakpoint = startIndex.advancedBy(1)
+		return self[startIndex ..< breakpoint].uppercaseString + self[breakpoint ..< endIndex]
 	}
 }
