@@ -4,7 +4,7 @@ import JetPack
 
 public struct StringsParser {
 
-	private static let pluralKeyPattern = try! NSRegularExpression(pattern: "^([^#]+)#(.+)$", options: [])
+	private static let pluralKeyPattern = try! NSRegularExpression(pattern: "^([^$]+)\\$(.+)$", options: [])
 
 
 	public func makeHierarchical(items: [Key : Strings.Item]) throws -> Strings {

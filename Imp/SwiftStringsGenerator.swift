@@ -268,9 +268,9 @@ public struct SwiftStringsGenerator: StringsGenerator {
 						writeNested() {
 							writeLine("let keySuffix = keySuffixForCategory(category)")
 							writeLine()
-							writeLine("guard var value = `\(typeName)`.__get(\"\\(key)\\(keySuffix)\") ?? `\(typeName)`.__get(\"\\(key)#other\") else {")
+							writeLine("guard var value = `\(typeName)`.__get(\"\\(key)\\(keySuffix)\") ?? `\(typeName)`.__get(\"\\(key)$other\") else {")
 							writeNested() {
-								writeLine("return \"\\(key)#other\"")
+								writeLine("return \"\\(key)$other\"")
 							}
 							writeLine("}")
 							writeLine()
@@ -290,12 +290,12 @@ public struct SwiftStringsGenerator: StringsGenerator {
 						writeLine("private func keySuffixForCategory(category: NSLocale.PluralCategory) -> String {")
 						writeNested() {
 							writeLine("switch category {")
-							writeLine("case .few:   return \"#few\"")
-							writeLine("case .many:  return \"#many\"")
-							writeLine("case .one:   return \"#one\"")
-							writeLine("case .other: return \"#other\"")
-							writeLine("case .two:   return \"#two\"")
-							writeLine("case .zero:  return \"#zero\"")
+							writeLine("case .few:   return \"$few\"")
+							writeLine("case .many:  return \"$many\"")
+							writeLine("case .one:   return \"$one\"")
+							writeLine("case .other: return \"$other\"")
+							writeLine("case .two:   return \"$two\"")
+							writeLine("case .zero:  return \"$zero\"")
 							writeLine("}")
 						}
 						writeLine("}")
