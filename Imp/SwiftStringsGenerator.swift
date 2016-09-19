@@ -4,13 +4,15 @@ import JetPack
 
 public struct SwiftStringsGenerator: StringsGenerator {
 
-	private let emitsJetpackImport: Bool
+	private let emitsJetPackImport: Bool
+	private let tableName: String?
 	private let typeName: String
 	private let visibility: String
 
 
-	public init(typeName: String = "Strings", visibility: Visibility = .internalVisibility, emitsJetpackImport: Bool = true) {
-		self.emitsJetpackImport = emitsJetpackImport
+	public init(typeName: String = "Strings", visibility: Visibility = .internalVisibility, tableName: String? = nil, emitsJetPackImport: Bool = true) {
+		self.emitsJetPackImport = emitsJetPackImport
+		self.tableName = tableName
 		self.typeName = typeName
 
 		switch visibility {
@@ -24,7 +26,7 @@ public struct SwiftStringsGenerator: StringsGenerator {
 		let buffer = StrongReference("")
 
 		buffer.target += "import Foundation\n"
-		if emitsJetpackImport && namespaceUsesPluralizedStrings(skeleton.rootNamespace) {
+		if emitsJetPackImport && namespaceUsesPluralizedStrings(skeleton.rootNamespace) {
 			buffer.target += "import JetPack\n"
 		}
 		buffer.target += "\n"
@@ -89,6 +91,8 @@ public struct SwiftStringsGenerator: StringsGenerator {
 		}
 
 		if lastKeyComponent == nil {
+			let tableName = self.tableName.map({ "\"\($0)\"" }) ?? "nil"
+
 			writeLine()
 			writeLine()
 
@@ -106,7 +110,7 @@ public struct SwiftStringsGenerator: StringsGenerator {
 
 				writeLine("private static func __get(key: String) -> String? {")
 				writeNested() {
-					writeLine("let value = __bundle.localizedStringForKey(key, value: \"\\u{0}\", table: nil)")
+					writeLine("let value = __bundle.localizedStringForKey(key, value: \"\\u{0}\", table: \(tableName))")
 					writeLine("guard value != \"\\u{0}\" else {")
 					writeNested() {
 						writeLine("return nil")
@@ -137,7 +141,7 @@ public struct SwiftStringsGenerator: StringsGenerator {
 
 				writeLine("private static func __getWithFallback(key: String) -> String {")
 				writeNested() {
-					writeLine("return __bundle.localizedStringForKey(key, value: key, table: nil)")
+					writeLine("return __bundle.localizedStringForKey(key, value: key, table: \(tableName))")
 				}
 				writeLine("}")
 
