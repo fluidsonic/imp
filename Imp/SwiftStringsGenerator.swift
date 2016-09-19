@@ -4,11 +4,13 @@ import JetPack
 
 public struct SwiftStringsGenerator: StringsGenerator {
 
+	private let emitsJetpackImport: Bool
 	private let typeName: String
 	private let visibility: String
 
 
-	public init(typeName: String, visibility: Visibility) {
+	public init(typeName: String = "Strings", visibility: Visibility = .internalVisibility, emitsJetpackImport: Bool = true) {
+		self.emitsJetpackImport = emitsJetpackImport
 		self.typeName = typeName
 
 		switch visibility {
@@ -21,13 +23,11 @@ public struct SwiftStringsGenerator: StringsGenerator {
 	public func generate(for skeleton: StringsSkeleton) -> String {
 		let buffer = StrongReference("")
 
-		if namespaceUsesPluralizedStrings(skeleton.rootNamespace) {
-			buffer.target += "import JetPack"
+		buffer.target += "import Foundation\n"
+		if emitsJetpackImport && namespaceUsesPluralizedStrings(skeleton.rootNamespace) {
+			buffer.target += "import JetPack\n"
 		}
-		else {
-			buffer.target += "import Foundation"
-		}
-		buffer.target += "\n\n"
+		buffer.target += "\n"
 
 		generate(for: skeleton.rootNamespace, buffer: buffer, parentKeyPath: [], lastKeyComponent: nil, linePrefix: "")
 

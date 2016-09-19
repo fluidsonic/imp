@@ -8,11 +8,12 @@ public class Runner: NSObject {
 	public static func run() {
 		let destinationOption = Option("destination", DestinationOption.console, flag: "o", description: "Path of the file to write the generated code to (defaults to 'console').")
 		let generatorOption = Option("generator", GeneratorOption.swift2, flag: "g", description: "What generator to use for emitting the generated code (available generators: swift2).")
+		let emitsJetPackImportFlag = Flag("emit-jetpack-import", description: "Whether to emit 'import JetPack' in the generated code when using pluralized strings.", default: true)
 		let typeNameOption = Option("typeName", "Strings", description: "How the type should be named which contains all strings and namespaces.")
 		let visibilityOption = Option("visibility", SwiftStringsGenerator.Visibility.internalVisibility, description: "Visibility the type should have which contains all strings and namespaces (internal or public).")
 		let inputFileArgument = Argument<String>("input", description: "Path to the .strings file to be parsed.")
 
-		let stringsCommand = command(destinationOption, generatorOption, typeNameOption, visibilityOption, inputFileArgument) { destinationOption, generatorOption, typeName, visibility, inputFile in
+		let stringsCommand = command(destinationOption, generatorOption, emitsJetPackImportFlag, typeNameOption, visibilityOption, inputFileArgument) { destinationOption, generatorOption, emitsJetpackImport, typeName, visibility, inputFile in
 			guard let data = NSData(contentsOfFile: inputFile) else {
 				throw Error(message: "Cannot load contents of file '\(inputFile)'")
 			}
@@ -24,7 +25,7 @@ public class Runner: NSObject {
 
 			let generator: StringsGenerator
 			switch generatorOption {
-			case .swift2: generator = SwiftStringsGenerator(typeName: typeName, visibility: visibility)
+			case .swift2: generator = SwiftStringsGenerator(typeName: typeName, visibility: visibility, emitsJetpackImport: emitsJetpackImport)
 			}
 
 			let output = generator.generate(for: skeleton)
