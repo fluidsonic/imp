@@ -264,9 +264,9 @@ public struct SwiftStringsGenerator: StringsGenerator {
 						writeLine()
 						writeLine()
 
-						writeLine("\(visibility) func forCategory(category: NSLocale.PluralCategory) -> String {")
+						writeLine("\(visibility) func forPluralCategory(category: NSLocale.PluralCategory) -> String {")
 						writeNested() {
-							writeLine("let keySuffix = keySuffixForCategory(category)")
+							writeLine("let keySuffix = keySuffixForPluralCategory(category)")
 							writeLine()
 							writeLine("guard var value = `\(typeName)`.__get(\"\\(key)\\(keySuffix)\") ?? `\(typeName)`.__get(\"\\(key)$other\") else {")
 							writeNested() {
@@ -287,7 +287,7 @@ public struct SwiftStringsGenerator: StringsGenerator {
 						writeLine()
 						writeLine()
 
-						writeLine("private func keySuffixForCategory(category: NSLocale.PluralCategory) -> String {")
+						writeLine("private func keySuffixForPluralCategory(category: NSLocale.PluralCategory) -> String {")
 						writeNested() {
 							writeLine("switch category {")
 							writeLine("case .few:   return \"$few\"")
