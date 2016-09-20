@@ -249,7 +249,7 @@ public struct SwiftStringsGenerator: StringsGenerator {
 				writeLine()
 
 				writeNested() {
-					writeLine("\(visibility) struct PluralizedString {")
+					writeLine("private struct __PluralizedString: PluralizedString {")
 					writeNested() {
 						writeLine()
 						writeLine("private var converter: ((String) -> String)?")
@@ -268,7 +268,7 @@ public struct SwiftStringsGenerator: StringsGenerator {
 						writeLine()
 						writeLine()
 
-						writeLine("\(visibility) func forPluralCategory(category: NSLocale.PluralCategory) -> String {")
+						writeLine("private func forPluralCategory(category: NSLocale.PluralCategory) -> String {")
 						writeNested() {
 							writeLine("let keySuffix = keySuffixForPluralCategory(category)")
 							writeLine()
@@ -361,7 +361,7 @@ public struct SwiftStringsGenerator: StringsGenerator {
 				buffer.target += "\")"
 			}
 			else {
-				buffer.target += "PluralizedString(key: \""
+				buffer.target += "__PluralizedString(key: \""
 				writeKeyPath()
 				buffer.target += "\")"
 			}
@@ -427,7 +427,7 @@ public struct SwiftStringsGenerator: StringsGenerator {
 				buffer.target += "\n"
 
 				buffer.target += linePrefix
-				buffer.target += "\treturn PluralizedString(key: \""
+				buffer.target += "\treturn __PluralizedString(key: \""
 				writeKeyPath()
 				buffer.target += "\") { (template: String) -> String in\n"
 
