@@ -23,44 +23,267 @@ public struct SwiftStringsGenerator: StringsGenerator {
 
 
 	public func generate(for skeleton: StringsSkeleton) -> String {
-		let buffer = StrongReference("")
+		let skeletonUsesPluralizedStrings = self.skeletonUsesPluralizedStrings(skeleton)
+		let writer = Writer()
 
-		buffer.target += "import Foundation\n"
-		if emitsJetPackImport && namespaceUsesPluralizedStrings(skeleton.rootNamespace) {
-			buffer.target += "import JetPack\n"
+		writer.line("import Foundation")
+		if emitsJetPackImport && skeletonUsesPluralizedStrings {
+			writer.line("import JetPack")
 		}
-		buffer.target += "\n"
+		writer.line()
 
-		generate(for: skeleton.rootNamespace, buffer: buffer, parentKeyPath: [], lastKeyComponent: nil, linePrefix: "")
+		generate(for: skeleton.rootNamespace, writer: writer, parentKeyPath: [], lastKeyComponent: nil)
 
-		return buffer.target
+		let tableName = self.tableName.map({ "\"\($0)\"" }) ?? "nil"
+
+		writer.line()
+		writer.line()
+		writer.line()
+
+		writer.line("private let __bundle: NSBundle = {")
+		writer.indent() {
+			writer.line("class Dummy {}")
+			writer.line()
+			writer.line("return NSBundle(forClass: Dummy.self)")
+		}
+		writer.line("}()")
+
+		if skeletonUsesPluralizedStrings {
+
+			writer.line()
+			writer.line()
+
+			writer.line("private let __defaultFormatter: NSNumberFormatter = {")
+			writer.indent() {
+				writer.line("let formatter = NSNumberFormatter()")
+				writer.line("formatter.locale = NSLocale.autoupdatingCurrentLocale()")
+				writer.line("formatter.numberStyle = .DecimalStyle")
+				writer.line()
+				writer.line("return formatter")
+			}
+			writer.line("}()")
+
+			writer.line()
+			writer.line()
+
+			writer.line("private func __keySuffixForPluralCategory(category: NSLocale.PluralCategory) -> String {")
+			writer.indent() {
+				writer.line("switch category {")
+				writer.line("case .few:   return \"$few\"")
+				writer.line("case .many:  return \"$many\"")
+				writer.line("case .one:   return \"$one\"")
+				writer.line("case .other: return \"$other\"")
+				writer.line("case .two:   return \"$two\"")
+				writer.line("case .zero:  return \"$zero\"")
+				writer.line("}")
+			}
+			writer.line("}")
+		}
+
+		writer.line()
+		writer.line()
+
+		writer.line("private func __string(key: String, parameters: [String : String]? = nil) -> String {")
+		writer.indent() {
+			writer.line("guard let value = __tryString(key) else {")
+			writer.indent() {
+				writer.line("return key")
+			}
+			writer.line("}")
+			writer.line()
+			writer.line("if let parameters = parameters {")
+			writer.indent() {
+				writer.line("return __substituteTemplateParameters(value, parameters: parameters)")
+			}
+			writer.line("}")
+			writer.line()
+			writer.line("return value")
+		}
+		writer.line("}")
+
+		if skeletonUsesPluralizedStrings {
+			writer.line()
+			writer.line()
+
+			writer.line("private func __string(key: String, number: NSNumber, formatter: NSNumberFormatter, parameters: [String : String]?) -> String {")
+			writer.indent() {
+				writer.line("return __string(key, pluralCategory: NSLocale.currentLocale().pluralCategoryForNumber(number, formatter: formatter), parameters: parameters)")
+			}
+			writer.line("}")
+
+			writer.line()
+			writer.line()
+
+			writer.line("private func __string(key: String, pluralCategory: NSLocale.PluralCategory, parameters: [String : String]?) -> String {")
+			writer.indent() {
+				writer.line("let keySuffix = __keySuffixForPluralCategory(pluralCategory)")
+				writer.line("guard let value = __tryString(\"\\(key)\\(keySuffix)\") ?? __tryString(\"\\(key)$other\") else {")
+				writer.indent() {
+					writer.line("return \"\\(key)$other\"")
+				}
+				writer.line("}")
+				writer.line()
+				writer.line("if let parameters = parameters {")
+				writer.indent() {
+					writer.line("return __substituteTemplateParameters(value, parameters: parameters)")
+				}
+				writer.line("}")
+				writer.line()
+				writer.line("return value")
+			}
+			writer.line("}")
+		}
+
+		writer.line()
+		writer.line()
+
+		writer.line("private func __substituteTemplateParameters(template: String, parameters: [String : String]) -> String {")
+		writer.indent() {
+			writer.line("var result = \"\"")
+			writer.line()
+			writer.line("var currentParameter = \"\"")
+			writer.line("var isParsingParameter = false")
+			writer.line("var isAwaitingClosingCurlyBracket = false")
+			writer.line()
+			writer.line("for character in template.characters {")
+			writer.indent() {
+				writer.line("if isAwaitingClosingCurlyBracket && character != \"}\" {")
+				writer.indent() {
+					writer.line("return template")
+				}
+				writer.line("}")
+				writer.line()
+				writer.line("switch character {")
+				writer.line("case \"{\":")
+				writer.indent() {
+					writer.line("if isParsingParameter {")
+					writer.indent() {
+						writer.line("if !currentParameter.isEmpty {")
+						writer.indent() {
+							writer.line("return template")
+						}
+						writer.line("}")
+						writer.line()
+						writer.line("isParsingParameter = false")
+						writer.line("result += \"{\"")
+					}
+					writer.line("}")
+					writer.line("else {")
+					writer.indent() {
+						writer.line("isParsingParameter = true")
+					}
+					writer.line("}")
+				}
+				writer.line()
+				writer.line("case \"}\":")
+				writer.indent() {
+					writer.line("if isParsingParameter {")
+					writer.indent() {
+						writer.line("if currentParameter.isEmpty {")
+						writer.indent() {
+							writer.line("return template")
+						}
+						writer.line("}")
+						writer.line()
+						writer.line("result += parameters[currentParameter] ?? \"{\\(currentParameter)}\"")
+						writer.line("currentParameter = \"\"")
+						writer.line("isParsingParameter = false")
+					}
+					writer.line("}")
+					writer.line("else if isAwaitingClosingCurlyBracket {")
+					writer.indent() {
+						writer.line("isAwaitingClosingCurlyBracket = false")
+					}
+					writer.line("}")
+					writer.line("else {")
+					writer.indent() {
+						writer.line("result += \"}\"")
+						writer.line("isAwaitingClosingCurlyBracket = true")
+					}
+					writer.line("}")
+				}
+				writer.line()
+				writer.line("default:")
+				writer.indent() {
+					writer.line("if isParsingParameter {")
+					writer.indent() {
+						writer.line("currentParameter.append(character)")
+					}
+					writer.line("}")
+					writer.line("else {")
+					writer.indent() {
+						writer.line("result.append(character)")
+					}
+					writer.line("}")
+				}
+				writer.line("}")
+			}
+			writer.line("}")
+			writer.line()
+			writer.line("guard !isParsingParameter && !isAwaitingClosingCurlyBracket else {")
+			writer.indent() {
+				writer.line("return template")
+			}
+			writer.line("}")
+			writer.line()
+			writer.line("return result")
+		}
+		writer.line("}")
+
+		writer.line()
+		writer.line()
+
+		writer.line("private func __tryString(key: String) -> String? {")
+		writer.indent() {
+			writer.line("let value = __bundle.localizedStringForKey(key, value: \"\\u{0}\", table: \(tableName))")
+			writer.line("guard value != \"\\u{0}\" else {")
+			writer.indent() {
+				writer.line("return nil")
+			}
+			writer.line("}")
+			writer.line("")
+			writer.line("return value")
+		}
+		writer.line("}")
+
+		if skeletonUsesPluralizedStrings {
+			writer.line()
+			writer.line()
+			writer.line()
+
+			writer.line("private struct __PluralizedString: PluralizedString {")
+			writer.indent() {
+				writer.line()
+				writer.line("private var key: String")
+				writer.line("private var parameters: [String : String]?")
+
+				writer.line()
+				writer.line()
+
+				writer.line("private init(_ key: String, parameters: [String : String]? = nil) {")
+				writer.indent() {
+					writer.line("self.key = key")
+					writer.line("self.parameters = parameters")
+				}
+				writer.line("}")
+
+				writer.line()
+				writer.line()
+
+				writer.line("private func forPluralCategory(pluralCategory: NSLocale.PluralCategory) -> String {")
+				writer.indent() {
+					writer.line("return __string(key, pluralCategory: pluralCategory, parameters: parameters)")
+				}
+				writer.line("}")
+			}
+			writer.line("}")
+		}
+
+		return writer.buffer
 	}
 
 
-	private func generate(for namespace: StringsSkeleton.Namespace, buffer: StrongReference<String>, parentKeyPath: KeyPath, lastKeyComponent: KeyComponent?, linePrefix: String) {
-		func write(content: String) {
-			buffer.target += content
-		}
-
-		var nestedLinePrefix = linePrefix
-		var nestedLinePrefixStack = [String]()
-
-		func writeLine(line: String = "") {
-			if !line.isEmpty {
-				buffer.target += nestedLinePrefix
-				buffer.target += line
-			}
-			buffer.target += "\n"
-		}
-
-		func writeNested(@noescape closure: Closure) {
-			nestedLinePrefixStack.append(nestedLinePrefix)
-			nestedLinePrefix += "\t"
-			closure()
-			nestedLinePrefix = nestedLinePrefixStack.removeLast()
-		}
-
-
+	private func generate(for namespace: StringsSkeleton.Namespace, writer: Writer, parentKeyPath: KeyPath, lastKeyComponent: KeyComponent?) {
 		let enumName: String
 		let keyPath: KeyPath
 
@@ -73,388 +296,189 @@ public struct SwiftStringsGenerator: StringsGenerator {
 			keyPath = parentKeyPath
 		}
 
-		writeLine()
-		writeLine("\(visibility) enum `\(enumName)` {")
-
-		let childLinePrefix = "\(linePrefix)\t"
-
-		for (keyComponent, namespace) in namespace.namespaces {
-			generate(for: namespace, buffer: buffer, parentKeyPath: keyPath, lastKeyComponent: keyComponent, linePrefix: childLinePrefix)
+		writer.line()
+		writer.line() {
+			writer.add(visibility)
+			writer.add(" enum ")
+			writer.addIdentifier(enumName)
+			writer.add(" {")
 		}
-
-		if !namespace.items.isEmpty {
-			writeLine()
-		}
-
-		for (keyComponent, item) in namespace.items {
-			generate(for: item, buffer: buffer, parentKeyPath: keyPath, lastKeyComponent: keyComponent, linePrefix: childLinePrefix)
-		}
-
-		if lastKeyComponent == nil {
-			let tableName = self.tableName.map({ "\"\($0)\"" }) ?? "nil"
-
-			writeLine()
-			writeLine()
-
-			writeNested() {
-				writeLine("private static let __bundle: NSBundle = {")
-				writeNested() {
-					writeLine("class Dummy {}")
-					writeLine()
-					writeLine("return NSBundle(forClass: Dummy.self)")
-				}
-				writeLine("}()")
-
-				writeLine()
-				writeLine()
-
-				writeLine("private static func __get(key: String) -> String? {")
-				writeNested() {
-					writeLine("let value = __bundle.localizedStringForKey(key, value: \"\\u{0}\", table: \(tableName))")
-					writeLine("guard value != \"\\u{0}\" else {")
-					writeNested() {
-						writeLine("return nil")
-					}
-					writeLine("}")
-					writeLine("")
-					writeLine("return value")
-				}
-				writeLine("}")
-
-				writeLine()
-				writeLine()
-
-				writeLine("private static func __getTemplate(key: String, parameters: [String : String]) -> String {")
-				writeNested() {
-					writeLine("guard let value = __get(key) else {")
-					writeNested() {
-						writeLine("return key")
-					}
-					writeLine("}")
-					writeLine("")
-					writeLine("return __substituteTemplateParameters(value, parameters: parameters)")
-				}
-				writeLine("}")
-
-				writeLine()
-				writeLine()
-
-				writeLine("private static func __getWithFallback(key: String) -> String {")
-				writeNested() {
-					writeLine("return __bundle.localizedStringForKey(key, value: key, table: \(tableName))")
-				}
-				writeLine("}")
-
-				writeLine()
-				writeLine()
-
-				writeLine("private static func __substituteTemplateParameters(template: String, parameters: [String : String]) -> String {")
-				writeNested() {
-					writeLine("var result = \"\"")
-					writeLine()
-					writeLine("var currentParameter = \"\"")
-					writeLine("var isParsingParameter = false")
-					writeLine("var isAwaitingClosingCurlyBracket = false")
-					writeLine()
-					writeLine("for character in template.characters {")
-					writeNested() {
-						writeLine("if isAwaitingClosingCurlyBracket && character != \"}\" {")
-						writeNested() {
-							writeLine("return template")
-						}
-						writeLine("}")
-						writeLine()
-						writeLine("switch character {")
-						writeLine("case \"{\":")
-						writeNested() {
-							writeLine("if isParsingParameter {")
-							writeNested() {
-								writeLine("if !currentParameter.isEmpty {")
-								writeNested() {
-									writeLine("return template")
-								}
-								writeLine("}")
-								writeLine()
-								writeLine("isParsingParameter = false")
-								writeLine("result += \"{\"")
-							}
-							writeLine("}")
-							writeLine("else {")
-							writeNested() {
-								writeLine("isParsingParameter = true")
-							}
-							writeLine("}")
-						}
-						writeLine()
-						writeLine("case \"}\":")
-						writeNested() {
-							writeLine("if isParsingParameter {")
-							writeNested() {
-								writeLine("if currentParameter.isEmpty {")
-								writeNested() {
-									writeLine("return template")
-								}
-								writeLine("}")
-								writeLine()
-								writeLine("result += parameters[currentParameter] ?? \"{\\(currentParameter)}\"")
-								writeLine("currentParameter = \"\"")
-								writeLine("isParsingParameter = false")
-							}
-							writeLine("}")
-							writeLine("else if isAwaitingClosingCurlyBracket {")
-							writeNested() {
-								writeLine("isAwaitingClosingCurlyBracket = false")
-							}
-							writeLine("}")
-							writeLine("else {")
-							writeNested() {
-								writeLine("result += \"}\"")
-								writeLine("isAwaitingClosingCurlyBracket = true")
-							}
-							writeLine("}")
-						}
-						writeLine()
-						writeLine("default:")
-						writeNested() {
-							writeLine("if isParsingParameter {")
-							writeNested() {
-								writeLine("currentParameter.append(character)")
-							}
-							writeLine("}")
-							writeLine("else {")
-							writeNested() {
-								writeLine("result.append(character)")
-							}
-							writeLine("}")
-						}
-						writeLine("}")
-					}
-					writeLine("}")
-					writeLine()
-					writeLine("guard !isParsingParameter && !isAwaitingClosingCurlyBracket else {")
-					writeNested() {
-						writeLine("return template")
-					}
-					writeLine("}")
-					writeLine()
-					writeLine("return result")
-				}
-				writeLine("}")
+		writer.indent() {
+			for (keyComponent, namespace) in namespace.namespaces.sort({ $0.0 < $1.0 }) {
+				generate(for: namespace, writer: writer, parentKeyPath: keyPath, lastKeyComponent: keyComponent)
 			}
 
+			if !namespace.items.isEmpty {
+				writer.line()
+			}
 
-			if namespaceUsesPluralizedStrings(namespace) {
-				writeLine()
-				writeLine()
-				writeLine()
-
-				writeNested() {
-					writeLine("private struct __PluralizedString: PluralizedString {")
-					writeNested() {
-						writeLine()
-						writeLine("private var converter: ((String) -> String)?")
-						writeLine("private var key: String")
-
-						writeLine()
-						writeLine()
-
-						writeLine("private init(key: String, converter: ((String) -> String)? = nil) {")
-						writeNested() {
-							writeLine("self.converter = converter")
-							writeLine("self.key = key")
-						}
-						writeLine("}")
-
-						writeLine()
-						writeLine()
-
-						writeLine("private func forPluralCategory(category: NSLocale.PluralCategory) -> String {")
-						writeNested() {
-							writeLine("let keySuffix = keySuffixForPluralCategory(category)")
-							writeLine()
-							writeLine("guard var value = `\(typeName)`.__get(\"\\(key)\\(keySuffix)\") ?? `\(typeName)`.__get(\"\\(key)$other\") else {")
-							writeNested() {
-								writeLine("return \"\\(key)$other\"")
-							}
-							writeLine("}")
-							writeLine()
-							writeLine("if let converter = converter {")
-							writeNested() {
-								writeLine("value = converter(value)")
-							}
-							writeLine("}")
-							writeLine()
-							writeLine("return value")
-						}
-						writeLine("}")
-
-						writeLine()
-						writeLine()
-
-						writeLine("private func keySuffixForPluralCategory(category: NSLocale.PluralCategory) -> String {")
-						writeNested() {
-							writeLine("switch category {")
-							writeLine("case .few:   return \"$few\"")
-							writeLine("case .many:  return \"$many\"")
-							writeLine("case .one:   return \"$one\"")
-							writeLine("case .other: return \"$other\"")
-							writeLine("case .two:   return \"$two\"")
-							writeLine("case .zero:  return \"$zero\"")
-							writeLine("}")
-						}
-						writeLine("}")
-					}
-					writeLine("}")
-				}
+			for (keyComponent, item) in namespace.items.sort({ $0.0 < $1.0 }) {
+				generate(for: item, writer: writer, parentKeyPath: keyPath, lastKeyComponent: keyComponent)
 			}
 		}
-
-		writeLine("}")
+		writer.line("}")
 
 		if lastKeyComponent != nil {
-			writeLine()
+			writer.line()
 		}
 	}
 
 
-	private func generate(for item: StringsSkeleton.Item, buffer: StrongReference<String>, parentKeyPath: KeyPath, lastKeyComponent: KeyComponent, linePrefix: String) {
+	private func generate(for item: StringsSkeleton.Item, writer: Writer, parentKeyPath: KeyPath, lastKeyComponent: KeyComponent) {
+		func next(for value: StringsSkeleton.Value, pluralCategories: Set<NSLocale.PluralCategory>? = nil, keyTemplateParameterName: ParameterName? = nil) {
+			generate(for: value, pluralCategories: pluralCategories, keyTemplateParameterName: keyTemplateParameterName, writer: writer, parentKeyPath: parentKeyPath, lastKeyComponent: lastKeyComponent)
+		}
+
 		switch item {
-		case let .pluralized(value, pluralCategories):
-			generate(for: value, pluralCategories: pluralCategories, buffer: buffer, parentKeyPath: parentKeyPath, lastKeyComponent: lastKeyComponent, linePrefix: linePrefix)
+		case let .pluralized(value, pluralCategories, keyTemplateParameterName):
+			next(for: value, pluralCategories: pluralCategories, keyTemplateParameterName: keyTemplateParameterName)
 
 		case let .simple(value):
-			generate(for: value, pluralCategories: nil, buffer: buffer, parentKeyPath: parentKeyPath, lastKeyComponent: lastKeyComponent, linePrefix: linePrefix)
+			next(for: value)
 		}
 	}
 
 
-	private func generate(for value: StringsSkeleton.Value, pluralCategories: Set<NSLocale.PluralCategory>?, buffer: StrongReference<String>, parentKeyPath: KeyPath, lastKeyComponent: KeyComponent, linePrefix: String) {
+	private func generate(for value: StringsSkeleton.Value, pluralCategories: Set<NSLocale.PluralCategory>?, keyTemplateParameterName: ParameterName?, writer: Writer, parentKeyPath: KeyPath, lastKeyComponent: KeyComponent) {
 		func writeKeyPath() {
 			if !parentKeyPath.isEmpty {
 				for component in parentKeyPath {
-					buffer.target += component.value
-					buffer.target += "."
+					writer.add(component.value)
+					writer.add(".")
 				}
 			}
 
-			buffer.target += lastKeyComponent.value
+			writer.add(lastKeyComponent.value)
 		}
-
-
-		let returnType = pluralCategories != nil ? "PluralizedString" : "String"
 
 		switch value {
 		case .constant:
-			buffer.target += linePrefix
-			buffer.target += visibility
-			buffer.target += " static var `"
-			buffer.target += lastKeyComponent.value
-			buffer.target += "`: "
-			buffer.target += returnType
-			buffer.target += " { return "
+			let returnType = pluralCategories != nil ? "PluralizedString" : "String"
 
-			if pluralCategories == nil {
-				buffer.target += "`"
-				buffer.target += typeName
-				buffer.target += "`.__getWithFallback(\""
-				writeKeyPath()
-				buffer.target += "\")"
-			}
-			else {
-				buffer.target += "__PluralizedString(key: \""
-				writeKeyPath()
-				buffer.target += "\")"
-			}
+			writer.line() {
+				writer.add(visibility)
+				writer.add(" static var  ")
+				writer.addIdentifier(lastKeyComponent.value)
+				writer.add(": ")
+				writer.add(returnType)
+				writer.add(" { return ")
 
-			buffer.target += " }\n"
+				if pluralCategories == nil {
+					writer.add("__string")
+				}
+				else {
+					writer.add("__PluralizedString")
+				}
+
+				writer.add("(\"")
+				writeKeyPath()
+				writer.add("\")")
+
+				writer.add(" }")
+			}
 
 		case let .template(parameterNames):
 			func writeParameterDictionary() {
-				buffer.target += "["
+				writer.add("[")
 				for (index, parameterName) in parameterNames.enumerate() {
+					let isKeyParameter = parameterName == keyTemplateParameterName
+
 					if index > 0 {
-						buffer.target += ", "
+						writer.add(", ")
 					}
 
-					buffer.target += "\""
-					buffer.target += parameterName.value
-					buffer.target += "\": `"
-					buffer.target += parameterName.value
-					buffer.target += "`"
+					writer.add("\"")
+					if isKeyParameter {
+						writer.add("#")
+					}
+					writer.add(parameterName.value)
+					writer.add("\": ")
+					if isKeyParameter {
+						writer.add("formatter.stringFromNumber(")
+						writer.addIdentifier(parameterName.value)
+						writer.add(") ?? \"\"")
+					}
+					else {
+						writer.addIdentifier(parameterName.value)
+					}
 				}
-				buffer.target += "]"
+				writer.add("]")
 			}
 
-			buffer.target += linePrefix
-			buffer.target += visibility
-			buffer.target += " static func `"
-			buffer.target += lastKeyComponent.value
-			buffer.target += "`("
+			writer.line() {
+				writer.add(visibility)
+				writer.add(" static func ")
+				writer.addIdentifier(lastKeyComponent.value)
+				writer.add("(")
 
-			for (index, parameterName) in parameterNames.enumerate() {
-				if index == 0 {
-					buffer.target += "`"
-					buffer.target += parameterName.value
-					buffer.target += "` "
+				for (index, parameterName) in parameterNames.enumerate() {
+					if index == 0 {
+						writer.addIdentifier(parameterName.value)
+					}
+					else {
+						writer.add(",")
+					}
+					writer.add(" ")
+
+					writer.addIdentifier(parameterName.value)
+					writer.add(": ")
+
+					if parameterName == keyTemplateParameterName {
+						writer.add("NSNumber")
+					}
+					else {
+						writer.add("String")
+					}
+				}
+
+				if keyTemplateParameterName != nil {
+					writer.add(", formatter: NSNumberFormatter = __defaultFormatter")
+				}
+
+				writer.add(") -> ")
+				if pluralCategories == nil || keyTemplateParameterName != nil {
+					writer.add("String")
 				}
 				else {
-					buffer.target += ", "
+					writer.add("PluralizedString")
 				}
-
-				buffer.target += "`"
-				buffer.target += parameterName.value
-				buffer.target += "`: String"
-			}
-
-			buffer.target += ") -> "
-			buffer.target += returnType
-			buffer.target += " {\n"
-
-			if pluralCategories == nil {
-				buffer.target += linePrefix
-				buffer.target += "\treturn `"
-				buffer.target += typeName
-				buffer.target += "`.__getTemplate(\""
+				writer.add(" { return ")
+				if pluralCategories == nil || keyTemplateParameterName != nil {
+					writer.add("__string")
+				}
+				else {
+					writer.add("__PluralizedString")
+				}
+				writer.add("(\"")
 				writeKeyPath()
-				buffer.target += "\", parameters: "
+				writer.add("\"")
+				if let keyTemplateParameterName = keyTemplateParameterName {
+					writer.add(", number: ")
+					writer.addIdentifier(keyTemplateParameterName.value)
+					writer.add(", formatter: formatter")
+				}
+				writer.add(", parameters: ")
 				writeParameterDictionary()
-				buffer.target += ")\n"
+
+				writer.add(") }")
 			}
-			else {
-				buffer.target += linePrefix
-				buffer.target += "\tlet __parameters: [String : String] = "
-				writeParameterDictionary()
-				buffer.target += "\n"
-
-				buffer.target += linePrefix
-				buffer.target += "\treturn __PluralizedString(key: \""
-				writeKeyPath()
-				buffer.target += "\") { (template: String) -> String in\n"
-
-				buffer.target += linePrefix
-				buffer.target += "\t\treturn `"
-				buffer.target += typeName
-				buffer.target += "`.__substituteTemplateParameters(template, parameters: __parameters)\n"
-
-				buffer.target += linePrefix
-				buffer.target += "\t}\n"
-			}
-
-			buffer.target += linePrefix
-			buffer.target += "}\n"
 		}
 	}
 
 
-	private func namespaceUsesPluralizedStrings(namespace: StringsSkeleton.Namespace) -> Bool {
-		for case .pluralized in namespace.items.values {
-			return true
-		}
-		for namespace in namespace.namespaces.values where namespaceUsesPluralizedStrings(namespace) {
-			return true
+	private func skeletonUsesPluralizedStrings(skeleton: StringsSkeleton) -> Bool {
+		func namespaceUsesPluralizedStrings(namespace: StringsSkeleton.Namespace) -> Bool {
+			for case .pluralized in namespace.items.values {
+				return true
+			}
+			for namespace in namespace.namespaces.values where namespaceUsesPluralizedStrings(namespace) {
+				return true
+			}
+
+			return false
 		}
 
-		return false
+		return namespaceUsesPluralizedStrings(skeleton.rootNamespace)
 	}
 
 
@@ -477,5 +501,63 @@ private extension String {
 
 		let breakpoint = startIndex.advancedBy(1)
 		return self[startIndex ..< breakpoint].uppercaseString + self[breakpoint ..< endIndex]
+	}
+}
+
+
+
+private final class Writer {
+
+	private static let swiftKeywords: Set<String> = [
+		"associatedtype", "class", "deinit", "enum", "extension", "func", "import", "init", "inout", "internal", "let", "operator", "private", "protocol", "public", "static", "struct", "subscript", "typealias", "var",
+		"break", "case", "continue", "default", "defer", "do", "else", "fallthrough", "for", "guard", "if", "in", "repeat", "return", "switch", "where", "while",
+		"as", "Any", "catch", "false", "is", "nil", "rethrows", "super", "self", "Self", "throw", "throws", "true", "try",
+		"associativity", "convenience", "dynamic", "didSet", "final", "get", "infix", "indirect", "lazy", "left", "mutating", "none", "nonmutating", "optional", "override", "postfix", "precedence", "prefix", "Protocol", "required", "right", "set", "Type", "unowned", "weak", "willSet"
+	]
+
+	private var buffer = ""
+	private var linePrefix = ""
+	private var linePrefixStack = [String]()
+
+
+	private func add(content: String) {
+		buffer += content
+	}
+
+
+	private func addIdentifier(identifier: String) {
+		if Writer.swiftKeywords.contains(identifier) {
+			buffer += "`"
+			buffer += identifier
+			buffer += "`"
+		}
+		else {
+			buffer += identifier
+		}
+	}
+
+
+	private func line(line: String = "") {
+		if !line.isEmpty {
+			buffer += linePrefix
+			buffer += line
+		}
+
+		buffer += "\n"
+	}
+
+
+	private func line(@noescape closure: Closure) {
+		buffer += linePrefix
+		closure()
+		buffer += "\n"
+	}
+
+
+	private func indent(@noescape closure: Closure) {
+		linePrefixStack.append(linePrefix)
+		linePrefix += "\t"
+		closure()
+		linePrefix = linePrefixStack.removeLast()
 	}
 }

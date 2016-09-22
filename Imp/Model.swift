@@ -34,7 +34,7 @@ public func == (a: Key, b: Key) -> Bool {
 
 
 
-public struct KeyComponent: CustomDebugStringConvertible, CustomStringConvertible, Hashable {
+public struct KeyComponent: Comparable, CustomDebugStringConvertible, CustomStringConvertible, Hashable {
 
 	public var value: String
 
@@ -61,6 +61,11 @@ public struct KeyComponent: CustomDebugStringConvertible, CustomStringConvertibl
 	public var hashValue: Int {
 		return value.hashValue
 	}
+}
+
+
+public func < (a: KeyComponent, b: KeyComponent) -> Bool {
+	return a.value < b.value
 }
 
 
@@ -217,7 +222,7 @@ public struct Strings {
 
 	public enum Item {
 
-		case pluralized([NSLocale.PluralCategory : Value])
+		case pluralized([NSLocale.PluralCategory : Value], keyTemplateParameterName: ParameterName?)
 		case simple(Value)
 	}
 
@@ -266,7 +271,7 @@ public struct StringsSkeleton {
 
 	public enum Item {
 
-		case pluralized(value: Value, pluralCategories: Set<NSLocale.PluralCategory>)
+		case pluralized(value: Value, pluralCategories: Set<NSLocale.PluralCategory>, keyTemplateParameterName: ParameterName?)
 		case simple(value: Value)
 	}
 
@@ -289,6 +294,6 @@ public struct StringsSkeleton {
 	public enum Value {
 
 		case constant
-		case template(parameters: [ParameterName])
+		case template(parameterNames: [ParameterName])
 	}
 }
