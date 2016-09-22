@@ -8,6 +8,7 @@ public class Runner: NSObject {
 	public static func run() {
 		let destinationOption = Option("destination", DestinationOption.console, flag: "o", description: "Path of the file to write the generated code to (defaults to 'console').")
 		let generatorOption = Option("generator", GeneratorOption.swift2, flag: "g", description: "What generator to use for emitting the generated code (available generators: swift2).")
+		let emitsAttributedTemplatesFlag = Flag("emit-attributed-templates", description: "Whether to emit additional template functions which use attributed strings.", default: true)
 		let emitsJetPackImportFlag = Flag("emit-jetpack-import", description: "Whether to emit 'import JetPack' in the generated code when using pluralized strings.", default: true)
 		let tableNameOption = Option("tableName", "", description: "Whether to use a specific table name when emitting generated code.")
 		let typeNameOption = Option("typeName", "Strings", description: "How the type should be named which contains all strings and namespaces.")
@@ -17,6 +18,7 @@ public class Runner: NSObject {
 		let stringsCommand = command(
 			destinationOption,
 			generatorOption,
+			emitsAttributedTemplatesFlag,
 			emitsJetPackImportFlag,
 			tableNameOption,
 			typeNameOption,
@@ -25,6 +27,7 @@ public class Runner: NSObject {
 		) {
 			destinationOption,
 			generatorOption,
+			emitsAttributedTemplates,
 			emitsJetPackImport,
 			tableName,
 			typeName,
@@ -43,7 +46,14 @@ public class Runner: NSObject {
 
 			let generator: StringsGenerator
 			switch generatorOption {
-			case .swift2: generator = SwiftStringsGenerator(typeName: typeName, visibility: visibility, tableName: tableName.nonEmpty, emitsJetPackImport: emitsJetPackImport)
+			case .swift2:
+				generator = SwiftStringsGenerator(
+					typeName:                 typeName,
+					visibility:               visibility,
+					tableName:                tableName.nonEmpty,
+					emitsAttributedTemplates: emitsAttributedTemplates,
+					emitsJetPackImport:       emitsJetPackImport
+				)
 			}
 
 			let output = generator.generate(for: skeleton)

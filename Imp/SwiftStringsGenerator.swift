@@ -4,13 +4,21 @@ import JetPack
 
 public struct SwiftStringsGenerator: StringsGenerator {
 
+	private let emitsAttributedTemplates: Bool
 	private let emitsJetPackImport: Bool
 	private let tableName: String?
 	private let typeName: String
 	private let visibility: String
 
 
-	public init(typeName: String = "Strings", visibility: Visibility = .internalVisibility, tableName: String? = nil, emitsJetPackImport: Bool = true) {
+	public init(
+		typeName: String = "Strings",
+		visibility: Visibility = .internalVisibility,
+		tableName: String? = nil,
+		emitsAttributedTemplates: Bool = true,
+		emitsJetPackImport: Bool = true
+	) {
+		self.emitsAttributedTemplates = emitsAttributedTemplates
 		self.emitsJetPackImport = emitsJetPackImport
 		self.tableName = tableName
 		self.typeName = typeName
@@ -23,11 +31,11 @@ public struct SwiftStringsGenerator: StringsGenerator {
 
 
 	public func generate(for skeleton: StringsSkeleton) -> String {
-		let skeletonUsesPluralizedStrings = self.skeletonUsesPluralizedStrings(skeleton)
+		let emitsPluralizedStrings = self.skeletonUsesPluralizedStrings(skeleton)
 		let writer = Writer()
 
 		writer.line("import Foundation")
-		if emitsJetPackImport && skeletonUsesPluralizedStrings {
+		if emitsJetPackImport && emitsPluralizedStrings {
 			writer.line("import JetPack")
 		}
 		writer.line()
@@ -48,8 +56,7 @@ public struct SwiftStringsGenerator: StringsGenerator {
 		}
 		writer.line("}()")
 
-		if skeletonUsesPluralizedStrings {
-
+		if emitsPluralizedStrings {
 			writer.line()
 			writer.line()
 
@@ -85,23 +92,54 @@ public struct SwiftStringsGenerator: StringsGenerator {
 
 		writer.line("private func __string(key: String, parameters: [String : String]? = nil) -> String {")
 		writer.indent() {
-			writer.line("guard let value = __tryString(key) else {")
-			writer.indent() {
-				writer.line("return key")
-			}
-			writer.line("}")
-			writer.line()
-			writer.line("if let parameters = parameters {")
-			writer.indent() {
-				writer.line("return __substituteTemplateParameters(value, parameters: parameters)")
-			}
-			writer.line("}")
-			writer.line()
-			writer.line("return value")
+			writer.line("return __tryString(key).map { __substituteTemplateParameters(template: $0, parameters: parameters) } ?? key")
 		}
 		writer.line("}")
 
-		if skeletonUsesPluralizedStrings {
+		if emitsAttributedTemplates {
+			writer.line()
+			writer.line()
+
+			writer.line("private func __string(key: String, parameters: [String : NSAttributedString]) -> NSAttributedString {")
+			writer.indent() {
+				writer.line("return __tryString(key).map { __substituteTemplateParameters(template: $0, parameters: parameters) } ?? NSAttributedString(string: key)")
+			}
+			writer.line("}")
+		}
+
+		if emitsPluralizedStrings {
+			writer.line()
+			writer.line()
+
+			writer.line("private func __string(key: String, pluralCategory: NSLocale.PluralCategory, parameters: [String : String]?) -> String {")
+			writer.indent() {
+				writer.line("guard let template = __tryString(key, pluralCategory: pluralCategory) else {")
+				writer.indent() {
+					writer.line("return key")
+				}
+				writer.line("}")
+				writer.line()
+				writer.line("return __substituteTemplateParameters(template: template, parameters: parameters)")
+			}
+			writer.line("}")
+
+			if emitsAttributedTemplates {
+				writer.line()
+				writer.line()
+
+				writer.line("private func __string(key: String, pluralCategory: NSLocale.PluralCategory, parameters: [String : NSAttributedString]?) -> NSAttributedString {")
+				writer.indent() {
+					writer.line("guard let template = __tryString(key, pluralCategory: pluralCategory) else {")
+					writer.indent() {
+						writer.line("return NSAttributedString(string: key)")
+					}
+					writer.line("}")
+					writer.line()
+					writer.line("return __substituteTemplateParameters(template: template, parameters: parameters)")
+				}
+				writer.line("}")
+			}
+
 			writer.line()
 			writer.line()
 
@@ -111,25 +149,86 @@ public struct SwiftStringsGenerator: StringsGenerator {
 			}
 			writer.line("}")
 
+			if emitsAttributedTemplates {
+				writer.line()
+				writer.line()
+
+				writer.line("private func __string(key: String, number: NSNumber, formatter: NSNumberFormatter, parameters: [String : NSAttributedString]?) -> NSAttributedString {")
+				writer.indent() {
+					writer.line("return __string(key, pluralCategory: NSLocale.currentLocale().pluralCategoryForNumber(number, formatter: formatter), parameters: parameters)")
+				}
+				writer.line("}")
+			}
+		}
+
+		writer.line()
+		writer.line()
+
+		writer.line("private func __substituteTemplateParameters(template template: String, parameters: [String : String]?) -> String {")
+		writer.indent() {
+			writer.line("guard let parameters = parameters else {")
+			writer.indent() {
+				writer.line("return template")
+			}
+			writer.line("}")
+			writer.line()
+			writer.line("var result = \"\"")
+			writer.line("return __substituteTemplateParameters(")
+			writer.indent() {
+				writer.line("template:    template,")
+				writer.line("onCharacter: { result.append($0) },")
+				writer.line("onParameter: { result += parameters[$0] ?? \"{\\($0)}\" }")
+			}
+			writer.line(") ? result : template")
+		}
+		writer.line("}")
+
+		if emitsAttributedTemplates {
 			writer.line()
 			writer.line()
 
-			writer.line("private func __string(key: String, pluralCategory: NSLocale.PluralCategory, parameters: [String : String]?) -> String {")
+			writer.line("private func __substituteTemplateParameters(template template: String, parameters: [String : NSAttributedString]?) -> NSAttributedString {")
 			writer.indent() {
-				writer.line("let keySuffix = __keySuffixForPluralCategory(pluralCategory)")
-				writer.line("guard let value = __tryString(\"\\(key)\\(keySuffix)\") ?? __tryString(\"\\(key)$other\") else {")
+				writer.line("guard let parameters = parameters else {")
 				writer.indent() {
-					writer.line("return \"\\(key)$other\"")
+					writer.line("return NSAttributedString(string: template)")
 				}
 				writer.line("}")
 				writer.line()
-				writer.line("if let parameters = parameters {")
+				writer.line("let result = NSMutableAttributedString()")
+				writer.line("var currentConstant = \"\"")
+				writer.line()
+				writer.line("let success = __substituteTemplateParameters(")
 				writer.indent() {
-					writer.line("return __substituteTemplateParameters(value, parameters: parameters)")
+					writer.line("template:    template,")
+					writer.line("onCharacter: { currentConstant.append($0) },")
+					writer.line("onParameter: { parameterName in")
+					writer.indent() {
+						writer.line("if !currentConstant.isEmpty {")
+						writer.indent() {
+							writer.line("result.appendAttributedString(NSAttributedString(string: currentConstant))")
+							writer.line("currentConstant = \"\"")
+						}
+						writer.line("}")
+						writer.line()
+						writer.line("result.appendAttributedString(parameters[parameterName] ?? NSAttributedString(string: \"{\\(parameterName)}\"))")
+					}
+					writer.line("}")
+				}
+				writer.line(")")
+				writer.line("guard success else {")
+				writer.indent() {
+					writer.line("return NSAttributedString(string: template)")
 				}
 				writer.line("}")
 				writer.line()
-				writer.line("return value")
+				writer.line("if !currentConstant.isEmpty {")
+				writer.indent() {
+					writer.line("result.appendAttributedString(NSAttributedString(string: currentConstant))")
+				}
+				writer.line("}")
+				writer.line()
+				writer.line("return result")
 			}
 			writer.line("}")
 		}
@@ -137,10 +236,8 @@ public struct SwiftStringsGenerator: StringsGenerator {
 		writer.line()
 		writer.line()
 
-		writer.line("private func __substituteTemplateParameters(template: String, parameters: [String : String]) -> String {")
+		writer.line("private func __substituteTemplateParameters(template template: String, onCharacter: (Character) -> Void, onParameter: (String) -> Void) -> Bool {")
 		writer.indent() {
-			writer.line("var result = \"\"")
-			writer.line()
 			writer.line("var currentParameter = \"\"")
 			writer.line("var isParsingParameter = false")
 			writer.line("var isAwaitingClosingCurlyBracket = false")
@@ -149,7 +246,7 @@ public struct SwiftStringsGenerator: StringsGenerator {
 			writer.indent() {
 				writer.line("if isAwaitingClosingCurlyBracket && character != \"}\" {")
 				writer.indent() {
-					writer.line("return template")
+					writer.line("return false")
 				}
 				writer.line("}")
 				writer.line()
@@ -160,12 +257,12 @@ public struct SwiftStringsGenerator: StringsGenerator {
 					writer.indent() {
 						writer.line("if !currentParameter.isEmpty {")
 						writer.indent() {
-							writer.line("return template")
+							writer.line("return false")
 						}
 						writer.line("}")
 						writer.line()
 						writer.line("isParsingParameter = false")
-						writer.line("result += \"{\"")
+						writer.line("onCharacter(\"{\")")
 					}
 					writer.line("}")
 					writer.line("else {")
@@ -181,11 +278,11 @@ public struct SwiftStringsGenerator: StringsGenerator {
 					writer.indent() {
 						writer.line("if currentParameter.isEmpty {")
 						writer.indent() {
-							writer.line("return template")
+							writer.line("return false")
 						}
 						writer.line("}")
 						writer.line()
-						writer.line("result += parameters[currentParameter] ?? \"{\\(currentParameter)}\"")
+						writer.line("onParameter(currentParameter)")
 						writer.line("currentParameter = \"\"")
 						writer.line("isParsingParameter = false")
 					}
@@ -197,7 +294,7 @@ public struct SwiftStringsGenerator: StringsGenerator {
 					writer.line("}")
 					writer.line("else {")
 					writer.indent() {
-						writer.line("result += \"}\"")
+						writer.line("onCharacter(\"}\")")
 						writer.line("isAwaitingClosingCurlyBracket = true")
 					}
 					writer.line("}")
@@ -212,7 +309,7 @@ public struct SwiftStringsGenerator: StringsGenerator {
 					writer.line("}")
 					writer.line("else {")
 					writer.indent() {
-						writer.line("result.append(character)")
+						writer.line("onCharacter(character)")
 					}
 					writer.line("}")
 				}
@@ -222,11 +319,11 @@ public struct SwiftStringsGenerator: StringsGenerator {
 			writer.line()
 			writer.line("guard !isParsingParameter && !isAwaitingClosingCurlyBracket else {")
 			writer.indent() {
-				writer.line("return template")
+				writer.line("return false")
 			}
 			writer.line("}")
 			writer.line()
-			writer.line("return result")
+			writer.line("return true")
 		}
 		writer.line("}")
 
@@ -246,7 +343,50 @@ public struct SwiftStringsGenerator: StringsGenerator {
 		}
 		writer.line("}")
 
-		if skeletonUsesPluralizedStrings {
+		if emitsPluralizedStrings {
+			writer.line()
+			writer.line()
+
+			writer.line("private func __tryString(key: String, pluralCategory: NSLocale.PluralCategory) -> String? {")
+			writer.indent() {
+				writer.line("let keySuffix = __keySuffixForPluralCategory(pluralCategory)")
+				writer.line("return __tryString(\"\\(key)\\(keySuffix)\") ?? __tryString(\"\\(key)$other\")")
+			}
+			writer.line("}")
+
+			if emitsAttributedTemplates {
+				writer.line()
+				writer.line()
+				writer.line()
+
+				writer.line("private struct __PluralizedAttributedString: PluralizedAttributedString {")
+				writer.indent() {
+					writer.line()
+					writer.line("private var key: String")
+					writer.line("private var parameters: [String : NSAttributedString]")
+
+					writer.line()
+					writer.line()
+
+					writer.line("private init(_ key: String, parameters: [String : NSAttributedString]) {")
+					writer.indent() {
+						writer.line("self.key = key")
+						writer.line("self.parameters = parameters")
+					}
+					writer.line("}")
+
+					writer.line()
+					writer.line()
+
+					writer.line("private func forPluralCategory(pluralCategory: NSLocale.PluralCategory) -> NSAttributedString {")
+					writer.indent() {
+						writer.line("return __string(key, pluralCategory: pluralCategory, parameters: parameters)")
+					}
+					writer.line("}")
+				}
+				writer.line("}")
+			}
+
 			writer.line()
 			writer.line()
 			writer.line()
@@ -307,11 +447,6 @@ public struct SwiftStringsGenerator: StringsGenerator {
 			for (keyComponent, namespace) in namespace.namespaces.sort({ $0.0 < $1.0 }) {
 				generate(for: namespace, writer: writer, parentKeyPath: keyPath, lastKeyComponent: keyComponent)
 			}
-
-			if !namespace.items.isEmpty {
-				writer.line()
-			}
-
 			for (keyComponent, item) in namespace.items.sort({ $0.0 < $1.0 }) {
 				generate(for: item, writer: writer, parentKeyPath: keyPath, lastKeyComponent: keyComponent)
 			}
@@ -351,34 +486,40 @@ public struct SwiftStringsGenerator: StringsGenerator {
 			writer.add(lastKeyComponent.value)
 		}
 
+		writer.line()
+
 		switch value {
 		case .constant:
 			let returnType = pluralCategories != nil ? "PluralizedString" : "String"
 
 			writer.line() {
 				writer.add(visibility)
-				writer.add(" static var  ")
+				writer.add(" static var ")
 				writer.addIdentifier(lastKeyComponent.value)
 				writer.add(": ")
 				writer.add(returnType)
-				writer.add(" { return ")
+			}
+			writer.indent() {
+				writer.line() {
+					writer.add("{ return ")
 
-				if pluralCategories == nil {
-					writer.add("__string")
+					if pluralCategories == nil {
+						writer.add("__string")
+					}
+					else {
+						writer.add("__PluralizedString")
+					}
+
+					writer.add("(\"")
+					writeKeyPath()
+					writer.add("\")")
+
+					writer.add(" }")
 				}
-				else {
-					writer.add("__PluralizedString")
-				}
-
-				writer.add("(\"")
-				writeKeyPath()
-				writer.add("\")")
-
-				writer.add(" }")
 			}
 
 		case let .template(parameterNames):
-			func writeParameterDictionary() {
+			func writeParameterDictionary(attributed attributed: Bool) {
 				writer.add("[")
 				for (index, parameterName) in parameterNames.enumerate() {
 					let isKeyParameter = parameterName == keyTemplateParameterName
@@ -394,9 +535,17 @@ public struct SwiftStringsGenerator: StringsGenerator {
 					writer.add(parameterName.value)
 					writer.add("\": ")
 					if isKeyParameter {
+						if attributed {
+							writer.add("NSAttributedString(string: ")
+						}
 						writer.add("formatter.stringFromNumber(")
 						writer.addIdentifier(parameterName.value)
 						writer.add(") ?? \"\"")
+						if attributed {
+							writer.add(", attributes: ")
+							writer.add(parameterName.value)
+							writer.add("Attributes)")
+						}
 					}
 					else {
 						writer.addIdentifier(parameterName.value)
@@ -405,62 +554,83 @@ public struct SwiftStringsGenerator: StringsGenerator {
 				writer.add("]")
 			}
 
-			writer.line() {
-				writer.add(visibility)
-				writer.add(" static func ")
-				writer.addIdentifier(lastKeyComponent.value)
-				writer.add("(")
+			func writeAccessorFunction(attributed attributed: Bool) {
+				writer.line() {
+					writer.add(visibility)
+					writer.add(" static func ")
+					writer.addIdentifier(lastKeyComponent.value)
+					writer.add("(")
 
-				for (index, parameterName) in parameterNames.enumerate() {
-					if index == 0 {
+					for (index, parameterName) in parameterNames.enumerate() {
+						if index == 0 {
+							writer.addIdentifier(parameterName.value)
+						}
+						else {
+							writer.add(",")
+						}
+						writer.add(" ")
+
 						writer.addIdentifier(parameterName.value)
+						writer.add(": ")
+
+						if parameterName == keyTemplateParameterName {
+							writer.add("NSNumber")
+							if attributed {
+								writer.add(", ")
+								writer.add(parameterName.value)
+								writer.add("Attributes: [String : AnyObject]")
+							}
+						}
+						else if attributed {
+							writer.add("NSAttributedString")
+						}
+						else {
+							writer.add("String")
+						}
+					}
+
+					if keyTemplateParameterName != nil {
+						writer.add(", formatter: NSNumberFormatter = __defaultFormatter")
+					}
+
+					writer.add(") -> ")
+					if pluralCategories == nil || keyTemplateParameterName != nil {
+						writer.add(attributed ? "NSAttributedString" : "String")
 					}
 					else {
-						writer.add(",")
-					}
-					writer.add(" ")
-
-					writer.addIdentifier(parameterName.value)
-					writer.add(": ")
-
-					if parameterName == keyTemplateParameterName {
-						writer.add("NSNumber")
-					}
-					else {
-						writer.add("String")
+						writer.add(attributed ? "PluralizedAttributedString" : "PluralizedString")
 					}
 				}
 
-				if keyTemplateParameterName != nil {
-					writer.add(", formatter: NSNumberFormatter = __defaultFormatter")
-				}
+				writer.indent() {
+					writer.line() {
+						writer.add("{ return ")
+						if pluralCategories == nil || keyTemplateParameterName != nil {
+							writer.add("__string")
+						}
+						else {
+							writer.add(attributed ? "__PluralizedAttributedString" : "__PluralizedString")
+						}
+						writer.add("(\"")
+						writeKeyPath()
+						writer.add("\"")
+						if let keyTemplateParameterName = keyTemplateParameterName {
+							writer.add(", number: ")
+							writer.addIdentifier(keyTemplateParameterName.value)
+							writer.add(", formatter: formatter")
+						}
+						writer.add(", parameters: ")
+						writeParameterDictionary(attributed: attributed)
 
-				writer.add(") -> ")
-				if pluralCategories == nil || keyTemplateParameterName != nil {
-					writer.add("String")
+						writer.add(") }")
+					}
 				}
-				else {
-					writer.add("PluralizedString")
-				}
-				writer.add(" { return ")
-				if pluralCategories == nil || keyTemplateParameterName != nil {
-					writer.add("__string")
-				}
-				else {
-					writer.add("__PluralizedString")
-				}
-				writer.add("(\"")
-				writeKeyPath()
-				writer.add("\"")
-				if let keyTemplateParameterName = keyTemplateParameterName {
-					writer.add(", number: ")
-					writer.addIdentifier(keyTemplateParameterName.value)
-					writer.add(", formatter: formatter")
-				}
-				writer.add(", parameters: ")
-				writeParameterDictionary()
+			}
 
-				writer.add(") }")
+			writeAccessorFunction(attributed: false)
+
+			if emitsAttributedTemplates && !parameterNames.isEmpty {
+				writeAccessorFunction(attributed: true)
 			}
 		}
 	}
