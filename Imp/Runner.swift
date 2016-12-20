@@ -7,7 +7,7 @@ public class Runner: NSObject {
 
 	public static func run() {
 		let destinationOption = Option("destination", DestinationOption.console, flag: "o", description: "Path of the file to write the generated code to (defaults to 'console').")
-		let generatorOption = Option("generator", GeneratorOption.swift2, flag: "g", description: "What generator to use for emitting the generated code (available generators: swift2).")
+		let generatorOption = Option("generator", GeneratorOption.swift2, flag: "g", description: "What generator to use for emitting the generated code (available generators: swift2, swift3).")
 		let emitsAttributedTemplatesFlag = Flag("emit-attributed-templates", description: "Whether to emit additional template functions which use attributed strings.", default: true)
 		let emitsJetPackImportFlag = Flag("emit-jetpack-import", description: "Whether to emit 'import JetPack' in the generated code when using pluralized strings.", default: true)
 		let tableNameOption = Option("tableName", "", description: "Whether to use a specific table name when emitting generated code.")
@@ -46,8 +46,9 @@ public class Runner: NSObject {
 
 			let generator: StringsGenerator
 			switch generatorOption {
-			case .swift2:
+			case .swift2, .swift3:
 				generator = SwiftStringsGenerator(
+					version:                  generatorOption == .swift2 ? .swift2 : .swift3,
 					typeName:                 typeName,
 					visibility:               visibility,
 					tableName:                tableName.nonEmpty,
@@ -85,23 +86,27 @@ public class Runner: NSObject {
 private enum GeneratorOption: ArgumentConvertible {
 
 	case swift2
+	case swift3
 
 
 	private init(parser: ArgumentParser) throws {
 		guard let rawValue = parser.shift() else {
 			throw ArgumentError.MissingValue(argument: nil)
 		}
-		guard rawValue == "swift2" else {
+
+		switch rawValue {
+		case "swift2": self = .swift2
+		case "swift3": self = .swift3
+		default:
 			throw Runner.Error(message: "Unknown generator '\(rawValue)'. Available generators: swift2")
 		}
-
-		self = .swift2
 	}
 
 
 	private var description: String {
 		switch self {
 		case .swift2: return "Swift 2.3"
+		case .swift3: return "Swift 3"
 		}
 	}
 }
