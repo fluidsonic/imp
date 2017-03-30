@@ -35,7 +35,7 @@ public class Runner: NSObject {
 			inputFile
 			in
 
-			guard let data = NSData(contentsOfFile: inputFile) else {
+			guard let data = try? Data(contentsOf: URL(fileURLWithPath: inputFile)) else {
 				throw Error(message: "Cannot load contents of file '\(inputFile)'")
 			}
 
@@ -65,17 +65,17 @@ public class Runner: NSObject {
 			$0.addCommand("strings", "Parses a .strings file and generates code to easily access the contents of the file.", stringsCommand)
 		}
 
-		main.run("Imp 0.1", arguments: NSProcessInfo.processInfo().arguments)
+		main.run("Imp 0.1")
 	}
 
 
 
-	private struct Error: CustomStringConvertible, ErrorType {
+	fileprivate struct Error: CustomStringConvertible, Swift.Error {
 
-		private var message: String
+		var message: String
 
 
-		private var description: String {
+		var description: String {
 			return message
 		}
 	}
@@ -89,9 +89,9 @@ private enum GeneratorOption: ArgumentConvertible {
 	case swift3
 
 
-	private init(parser: ArgumentParser) throws {
+	init(parser: ArgumentParser) throws {
 		guard let rawValue = parser.shift() else {
-			throw ArgumentError.MissingValue(argument: nil)
+			throw ArgumentError.missingValue(argument: nil)
 		}
 
 		switch rawValue {
@@ -103,7 +103,7 @@ private enum GeneratorOption: ArgumentConvertible {
 	}
 
 
-	private var description: String {
+	var description: String {
 		switch self {
 		case .swift2: return "Swift 2.3"
 		case .swift3: return "Swift 3"
@@ -116,32 +116,32 @@ private enum GeneratorOption: ArgumentConvertible {
 private enum DestinationOption: ArgumentConvertible {
 
 	case console
-	case file(NSURL)
+	case file(URL)
 
 
-	private init(parser: ArgumentParser) throws {
+	init(parser: ArgumentParser) throws {
 		guard let path = parser.shift() else {
-			throw ArgumentError.MissingValue(argument: nil)
+			throw ArgumentError.missingValue(argument: nil)
 		}
 
 		if path == "console" {
 			self = .console
 		}
 		else {
-			self = .file(NSURL(fileURLWithPath: path))
+			self = .file(URL(fileURLWithPath: path))
 		}
 	}
 
 
-	private var description: String {
+	var description: String {
 		switch self {
 		case .console:        return "console"
-		case let .file(path): return path.path ?? "?"
+		case let .file(path): return path.path
 		}
 	}
 
 
-	private func write(content: String) throws {
+	func write(_ content: String) throws {
 		switch self {
 		case .console:
 			print(content)
@@ -149,8 +149,8 @@ private enum DestinationOption: ArgumentConvertible {
 		case let .file(path):
 			// FIXME prevent unnecessary writes
 
-			let data = content.dataUsingEncoding(NSUTF8StringEncoding, allowLossyConversion: true)!
-			try data.writeToURL(path, options: .AtomicWrite)
+			let data = content.data(using: .utf8, allowLossyConversion: true)!
+			try data.write(to: path, options: .atomicWrite)
 		}
 	}
 }
@@ -160,7 +160,7 @@ extension SwiftStringsGenerator.Visibility: ArgumentConvertible {
 
 	public init(parser: ArgumentParser) throws {
 		guard let rawValue = parser.shift() else {
-			throw ArgumentError.MissingValue(argument: nil)
+			throw ArgumentError.missingValue(argument: nil)
 		}
 
 		switch rawValue {

@@ -7,7 +7,7 @@ public struct StringsParser {
 	private static let pluralKeyPattern = try! NSRegularExpression(pattern: "^([^$]+)\\$(.+)$", options: [])
 
 
-	public func makeHierarchical(items: [Key : Strings.Item]) throws -> Strings {
+	public func makeHierarchical(_ items: [Key : Strings.Item]) throws -> Strings {
 		class TemporaryNamespace {
 
 			var items: [KeyComponent : Strings.Item] = [:]
@@ -53,7 +53,7 @@ public struct StringsParser {
 
 
 	public func makeSkeleton(of strings: Strings) -> StringsSkeleton {
-		func skeletonForItem(item: Strings.Item) -> StringsSkeleton.Item {
+		func skeletonForItem(_ item: Strings.Item) -> StringsSkeleton.Item {
 			switch item {
 			case let .pluralized(values, keyTemplateParameterName):
 				var parameters = Set<ParameterName>()
@@ -98,7 +98,7 @@ public struct StringsParser {
 			}
 		}
 
-		func skeletonForNamespace(namespace: Strings.Namespace) -> StringsSkeleton.Namespace {
+		func skeletonForNamespace(_ namespace: Strings.Namespace) -> StringsSkeleton.Namespace {
 			return StringsSkeleton.Namespace(
 				items:      namespace.items.mapAsDictionary { ($0, skeletonForItem($1)) },
 				namespaces: namespace.namespaces.mapAsDictionary { ($0, skeletonForNamespace($1)) }
@@ -110,14 +110,14 @@ public struct StringsParser {
 	}
 	
 
-	public func parse(data data: NSData) throws -> [Key : Strings.Item] {
-		guard data.length > 0 else {
+	public func parse(data: Data) throws -> [Key : Strings.Item] {
+		guard data.count > 0 else {
 			return [:]
 		}
 
-		let content: AnyObject
+		let content: Any
 		do {
-			content = try NSPropertyListSerialization.propertyListWithData(data, options: .Immutable, format: nil)
+			content = try PropertyListSerialization.propertyList(from: data, options: [], format: nil)
 		}
 		catch let error as NSError {
 			let parsingError = error.userInfo["kCFPropertyListOldStyleParsingError"] as? NSError ?? error
@@ -126,13 +126,13 @@ public struct StringsParser {
 			throw Error(message: message)
 		}
 
-		guard let dictionary = content as? [NSObject : AnyObject] else {
+		guard let dictionary = content as? [AnyHashable: Any] else {
 			throw Error(message: "Not in .strings format")
 		}
 
 		var simpleValuesByKey: [Key : Strings.Value] = [:]
 		var keyTemplateParameterNameByKey: [Key : ParameterName] = [:]
-		var pluralizedValuesByKey: [Key : StrongReference<[NSLocale.PluralCategory : Strings.Value]>] = [:]
+		var pluralizedValuesByKey: [Key : StrongReference<[Locale.PluralCategory : Strings.Value]>] = [:]
 
 		for (rawKey, rawValue) in dictionary {
 			guard let stringKey = rawKey as? String else {
@@ -141,20 +141,20 @@ public struct StringsParser {
 
 			let (value, keyTemplateParameterName) = try parseValue(rawValue, key: stringKey)
 
-			if let match = stringKey.firstMatchForRegularExpression(StringsParser.pluralKeyPattern), key = match[1].map({ Key($0) }), rawPluralCategory = match[2] {
+			if let match = stringKey.firstMatchForRegularExpression(StringsParser.pluralKeyPattern), let key = match[1].map({ Key($0) }), let rawPluralCategory = match[2] {
 				guard let pluralCategory = parsePluralCategory(rawPluralCategory) else {
 					throw Error(message: "String '\(stringKey)' uses unknown plural category '\(rawPluralCategory)'. Supported plural categories: few, many, one, other, two & zero.")
 				}
 
 				if let pluralizedValues = pluralizedValuesByKey[key] {
-					pluralizedValues.target[pluralCategory] = value
+					pluralizedValues.value[pluralCategory] = value
 				}
 				else {
 					pluralizedValuesByKey[key] = StrongReference([pluralCategory : value])
 				}
 
 				if let keyTemplateParameterName = keyTemplateParameterName {
-					if let existingKeyTemplateParameterName = keyTemplateParameterNameByKey[key] where existingKeyTemplateParameterName != keyTemplateParameterName {
+					if let existingKeyTemplateParameterName = keyTemplateParameterNameByKey[key], existingKeyTemplateParameterName != keyTemplateParameterName {
 						throw Error(message: "String '\(key)' cannot have multiple key template parameters ('\(existingKeyTemplateParameterName)' and '\(keyTemplateParameterName)' are both using {#…} syntax).")
 					}
 
@@ -175,14 +175,14 @@ public struct StringsParser {
 				throw Error(message: "String '\(key)' cannot have pluralized and non-pluralized values.")
 			}
 
-			itemsByKey[key] = .pluralized(values.target, keyTemplateParameterName: keyTemplateParameterNameByKey[key])
+			itemsByKey[key] = .pluralized(values.value, keyTemplateParameterName: keyTemplateParameterNameByKey[key])
 		}
 
 		return itemsByKey
 	}
 
 
-	private func parsePluralCategory(id: String) -> NSLocale.PluralCategory? {
+	private func parsePluralCategory(_ id: String) -> Locale.PluralCategory? {
 		switch id {
 		case "few":   return .few
 		case "many":  return .many
@@ -195,7 +195,7 @@ public struct StringsParser {
 	}
 
 
-	private func parseValue(rawValue: AnyObject, key: String) throws -> (Strings.Value, ParameterName?) {
+	private func parseValue(_ rawValue: Any, key: String) throws -> (Strings.Value, ParameterName?) {
 		guard let valueToParse = rawValue as? String else {
 			throw Error(message: "Strings value must be a string: \(rawValue)")
 		}
@@ -210,7 +210,7 @@ public struct StringsParser {
 		var position = 0
 		var keyParameterNameForPluralizedStrings: ParameterName?
 
-		func error(message message: String) -> Error {
+		func error(message: String) -> Error {
 			return Error(message: "\(message) - at position \(position) of '\(valueToParse)'")
 		}
 
@@ -248,7 +248,7 @@ public struct StringsParser {
 
 					let parameterName = ParameterName(currentParameterName)
 					if currentParameterIsKeyForPluralizedString {
-						if let keyParameterNameForPluralizedString = keyParameterNameForPluralizedStrings where keyParameterNameForPluralizedString != parameterName {
+						if let keyParameterNameForPluralizedString = keyParameterNameForPluralizedStrings, keyParameterNameForPluralizedString != parameterName {
 							throw error(message: "Template cannot have multiple key parameters ('\(keyParameterNameForPluralizedString)' and '\(parameterName)' are both using {#…} syntax).")
 						}
 
@@ -302,7 +302,7 @@ public struct StringsParser {
 
 
 
-	public struct Error: CustomStringConvertible, ErrorType {
+	public struct Error: CustomStringConvertible, Swift.Error {
 
 		public var message: String
 

@@ -40,7 +40,7 @@ public struct KeyComponent: Comparable, CustomDebugStringConvertible, CustomStri
 
 
 	public init?(_ value: String) {
-		if value.isEmpty || value.containsString(".") {
+		if value.isEmpty || value.contains(".") {
 			return nil
 		}
 
@@ -75,12 +75,12 @@ public func == (a: KeyComponent, b: KeyComponent) -> Bool {
 
 
 
-public struct KeyPath: ArrayLiteralConvertible, CustomDebugStringConvertible, CustomStringConvertible, Hashable, MutableCollectionType {
+public struct KeyPath: CustomDebugStringConvertible, CustomStringConvertible, ExpressibleByArrayLiteral, Hashable, MutableCollection {
 
 	public typealias Components = Array<KeyComponent>
 	public typealias Element = KeyComponent
-	public typealias Generator = Components.Generator
 	public typealias Index = Components.Index
+	public typealias Iterator = Components.Iterator
 	public typealias SubSequence = Components.SubSequence
 
 	public var components: [KeyComponent]
@@ -94,7 +94,7 @@ public struct KeyPath: ArrayLiteralConvertible, CustomDebugStringConvertible, Cu
 	public init?(_ key: Key) {
 		components = []
 
-		for component in key.value.componentsSeparatedByString(".") {
+		for component in key.value.components(separatedBy: ".") {
 			guard let component = KeyComponent(component) else {
 				return nil
 			}
@@ -115,7 +115,7 @@ public struct KeyPath: ArrayLiteralConvertible, CustomDebugStringConvertible, Cu
 
 
 	public var description: String {
-		return components.joinWithSeparator(".") { $0.description }
+		return components.joined(separator: ".") { $0.description }
 	}
 
 
@@ -124,13 +124,18 @@ public struct KeyPath: ArrayLiteralConvertible, CustomDebugStringConvertible, Cu
 	}
 
 
-	public func generate() -> Generator {
-		return components.generate()
+	public func makeIterator() -> Iterator {
+		return components.makeIterator()
 	}
 
 
 	public var hashValue: Int {
 		return components.reduce(0) { (a, b) in a ^ b.hashValue }
+	}
+
+
+	public func index(after i: Index) -> Index {
+		return components.index(after: i)
 	}
 
 
@@ -171,7 +176,7 @@ public func + (path: KeyPath, component: KeyComponent) -> KeyPath {
 
 public func + (component: KeyComponent, path: KeyPath) -> KeyPath {
 	var path = path
-	path.components.insert(component, atIndex: 0)
+	path.components.insert(component, at: 0)
 	return path
 }
 
@@ -222,7 +227,7 @@ public struct Strings {
 
 	public enum Item {
 
-		case pluralized([NSLocale.PluralCategory : Value], keyTemplateParameterName: ParameterName?)
+		case pluralized([Locale.PluralCategory : Value], keyTemplateParameterName: ParameterName?)
 		case simple(Value)
 	}
 
@@ -271,7 +276,7 @@ public struct StringsSkeleton {
 
 	public enum Item {
 
-		case pluralized(value: Value, pluralCategories: Set<NSLocale.PluralCategory>, keyTemplateParameterName: ParameterName?)
+		case pluralized(value: Value, pluralCategories: Set<Locale.PluralCategory>, keyTemplateParameterName: ParameterName?)
 		case simple(value: Value)
 	}
 

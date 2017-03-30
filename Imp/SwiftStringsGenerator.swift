@@ -445,10 +445,10 @@ public struct SwiftStringsGenerator: StringsGenerator {
 			writer.add(" {")
 		}
 		writer.indent() {
-			for (keyComponent, namespace) in namespace.namespaces.sort({ $0.0 < $1.0 }) {
+			for (keyComponent, namespace) in namespace.namespaces.sorted(by: { $0.0 < $1.0 }) {
 				generate(for: namespace, writer: writer, parentKeyPath: keyPath, lastKeyComponent: keyComponent)
 			}
-			for (keyComponent, item) in namespace.items.sort({ $0.0 < $1.0 }) {
+			for (keyComponent, item) in namespace.items.sorted(by: { $0.0 < $1.0 }) {
 				generate(for: item, writer: writer, parentKeyPath: keyPath, lastKeyComponent: keyComponent)
 			}
 		}
@@ -461,7 +461,7 @@ public struct SwiftStringsGenerator: StringsGenerator {
 
 
 	private func generate(for item: StringsSkeleton.Item, writer: Writer, parentKeyPath: KeyPath, lastKeyComponent: KeyComponent) {
-		func next(for value: StringsSkeleton.Value, pluralCategories: Set<NSLocale.PluralCategory>? = nil, keyTemplateParameterName: ParameterName? = nil) {
+		func next(for value: StringsSkeleton.Value, pluralCategories: Set<Locale.PluralCategory>? = nil, keyTemplateParameterName: ParameterName? = nil) {
 			generate(for: value, pluralCategories: pluralCategories, keyTemplateParameterName: keyTemplateParameterName, writer: writer, parentKeyPath: parentKeyPath, lastKeyComponent: lastKeyComponent)
 		}
 
@@ -475,7 +475,7 @@ public struct SwiftStringsGenerator: StringsGenerator {
 	}
 
 
-	private func generate(for value: StringsSkeleton.Value, pluralCategories: Set<NSLocale.PluralCategory>?, keyTemplateParameterName: ParameterName?, writer: Writer, parentKeyPath: KeyPath, lastKeyComponent: KeyComponent) {
+	private func generate(for value: StringsSkeleton.Value, pluralCategories: Set<Locale.PluralCategory>?, keyTemplateParameterName: ParameterName?, writer: Writer, parentKeyPath: KeyPath, lastKeyComponent: KeyComponent) {
 		func writeKeyPath() {
 			if !parentKeyPath.isEmpty {
 				for component in parentKeyPath {
@@ -520,9 +520,9 @@ public struct SwiftStringsGenerator: StringsGenerator {
 			}
 
 		case let .template(parameterNames):
-			func writeParameterDictionary(attributed attributed: Bool) {
+			func writeParameterDictionary(attributed: Bool) {
 				writer.add("[")
-				for (index, parameterName) in parameterNames.enumerate() {
+				for (index, parameterName) in parameterNames.enumerated() {
 					let isKeyParameter = parameterName == keyTemplateParameterName
 
 					if index > 0 {
@@ -562,14 +562,14 @@ public struct SwiftStringsGenerator: StringsGenerator {
 				writer.add("]")
 			}
 
-			func writeAccessorFunction(attributed attributed: Bool) {
+			func writeAccessorFunction(attributed: Bool) {
 				writer.line() {
 					writer.add(visibility)
 					writer.add(" static func ")
 					writer.addIdentifier(lastKeyComponent.value)
 					writer.add("(")
 
-					for (index, parameterName) in parameterNames.enumerate() {
+					for (index, parameterName) in parameterNames.enumerated() {
 						if index == 0 {
 							if version == .swift2 {
 								writer.addIdentifier(parameterName.value)
@@ -646,8 +646,8 @@ public struct SwiftStringsGenerator: StringsGenerator {
 	}
 
 
-	private func skeletonUsesPluralizedStrings(skeleton: StringsSkeleton) -> Bool {
-		func namespaceUsesPluralizedStrings(namespace: StringsSkeleton.Namespace) -> Bool {
+	private func skeletonUsesPluralizedStrings(_ skeleton: StringsSkeleton) -> Bool {
+		func namespaceUsesPluralizedStrings(_ namespace: StringsSkeleton.Namespace) -> Bool {
 			for case .pluralized in namespace.items.values {
 				return true
 			}
@@ -680,15 +680,15 @@ public struct SwiftStringsGenerator: StringsGenerator {
 
 
 
-private extension String {
+extension String {
 
-	private var firstCharacterCapitalized: String {
+	fileprivate var firstCharacterCapitalized: String {
 		guard !isEmpty else {
 			return self
 		}
 
-		let breakpoint = startIndex.advancedBy(1)
-		return self[startIndex ..< breakpoint].uppercaseString + self[breakpoint ..< endIndex]
+		let breakpoint = characters.index(startIndex, offsetBy: 1)
+		return self[startIndex ..< breakpoint].uppercased() + self[breakpoint ..< endIndex]
 	}
 }
 
@@ -703,23 +703,24 @@ private final class Writer {
 		"associativity", "convenience", "dynamic", "didSet", "final", "get", "infix", "indirect", "lazy", "left", "mutating", "none", "nonmutating", "optional", "override", "postfix", "precedence", "prefix", "Protocol", "required", "right", "set", "Type", "unowned", "weak", "willSet"
 	]
 
-	private var buffer = ""
 	private var linePrefix = ""
 	private var linePrefixStack = [String]()
 	private let version: SwiftStringsGenerator.Version
 
+	private(set) var buffer = ""
 
-	private init(version: SwiftStringsGenerator.Version) {
+
+	init(version: SwiftStringsGenerator.Version) {
 		self.version = version
 	}
 
 
-	private func add(content: String) {
+	func add(_ content: String) {
 		buffer += content
 	}
 
 
-	private func addIdentifier(identifier: String) {
+	func addIdentifier(_ identifier: String) {
 		if Writer.swiftKeywords.contains(identifier) {
 			buffer += "`"
 			buffer += identifier
@@ -731,7 +732,7 @@ private final class Writer {
 	}
 
 
-	private func function(name name: String, visibility: String, firstParameterExternalName: String? = nil, parameters: String? = nil, returnType: String? = nil, @noescape closure: Closure) {
+	func function(name: String, visibility: String, firstParameterExternalName: String? = nil, parameters: String? = nil, returnType: String? = nil, closure: Closure) {
 		add(linePrefix)
 		add(visibility)
 		add(" func ")
@@ -780,7 +781,7 @@ private final class Writer {
 	}
 
 
-	private func initializer(visibility visibility: String, parameters: String? = nil, @noescape closure: Closure) {
+	func initializer(visibility: String, parameters: String? = nil, closure: Closure) {
 		add(linePrefix)
 		add(visibility)
 		add(" init(")
@@ -795,7 +796,7 @@ private final class Writer {
 	}
 
 
-	private func line(line: String = "") {
+	func line(_ line: String = "") {
 		if !line.isEmpty {
 			buffer += linePrefix
 			buffer += line
@@ -805,14 +806,14 @@ private final class Writer {
 	}
 
 
-	private func line(@noescape closure: Closure) {
+	func line(_ closure: Closure) {
 		buffer += linePrefix
 		closure()
 		buffer += "\n"
 	}
 
 
-	private func indent(@noescape closure: Closure) {
+	func indent(_ closure: Closure) {
 		linePrefixStack.append(linePrefix)
 		linePrefix += "\t"
 		closure()
