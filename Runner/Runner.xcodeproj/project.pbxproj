@@ -210,7 +210,7 @@
 				TargetAttributes = {
 					49A013761D4B835800A7D814 = {
 						CreatedOnToolsVersion = 7.3.1;
-						LastSwiftMigration = 0800;
+						LastSwiftMigration = 0830;
 					};
 					49A013841D4B83A100A7D814 = {
 						CreatedOnToolsVersion = 7.3.1;
@@ -426,7 +426,7 @@
 				);
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) \"@executable_path/../Frameworks\" \"@executable_path/$(PRODUCT_NAME).bundle/Contents/Frameworks\"";
 				PRODUCT_NAME = "imp-cli";
-				SWIFT_VERSION = 2.3;
+				SWIFT_VERSION = 3.0;
 			};
 			name = Debug;
 		};
@@ -440,7 +440,7 @@
 				);
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) \"@executable_path/../Frameworks\"";
 				PRODUCT_NAME = "imp-cli";
-				SWIFT_VERSION = 2.3;
+				SWIFT_VERSION = 3.0;
 			};
 			name = Release;
 		};
