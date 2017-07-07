@@ -21,7 +21,7 @@ public struct SwiftStringsGenerator: StringsGenerator {
 		emitsAttributedTemplates: Bool = true,
 		emitsJetPackImport: Bool = true
 	) {
-		self.attributeStringKeyType = version == .swift3 ? "String" : "NSAttributeStringKey"
+		self.attributeStringKeyType = version == .swift3 ? "String" : "NSAttributedStringKey"
 		self.emitsAttributedTemplates = emitsAttributedTemplates
 		self.emitsJetPackImport = emitsJetPackImport
 		self.tableName = tableName
