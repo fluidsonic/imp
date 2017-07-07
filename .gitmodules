@@ -1,6 +1,6 @@
 [submodule "Vendor/Commander"]
 	path = Vendor/Commander
-	url = https://github.com/kylef/Commander.git
+	url = https://github.com/CalQL8ed-K-OS/Commander.git
 [submodule "Vendor/JetPack"]
 	path = Vendor/JetPack
 	url = https://github.com/fluidsonic/JetPack.git

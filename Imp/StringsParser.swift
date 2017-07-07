@@ -141,8 +141,8 @@ public struct StringsParser {
 
 			let (value, keyTemplateParameterName) = try parseValue(rawValue, key: stringKey)
 
-			if let match = stringKey.firstMatchForRegularExpression(StringsParser.pluralKeyPattern), let key = match[1].map({ Key($0) }), let rawPluralCategory = match[2] {
-				guard let pluralCategory = parsePluralCategory(rawPluralCategory) else {
+			if let match = stringKey.firstMatchForRegularExpression(StringsParser.pluralKeyPattern), let key = match[1].map({ Key(String($0)) }), let rawPluralCategory = match[2] {
+				guard let pluralCategory = parsePluralCategory(String(rawPluralCategory)) else {
 					throw Error(message: "String '\(stringKey)' uses unknown plural category '\(rawPluralCategory)'. Supported plural categories: few, many, one, other, two & zero.")
 				}
 

@@ -5,6 +5,7 @@ import JetPack
 
 public class Runner: NSObject {
 
+	@objc
 	public static func run() {
 		let destinationOption = Option("destination", DestinationOption.console, flag: "o", description: "Path of the file to write the generated code to (defaults to 'console').")
 		let generatorOption = Option("generator", GeneratorOption.swift2, flag: "g", description: "What generator to use for emitting the generated code (available generators: swift2, swift3).")
