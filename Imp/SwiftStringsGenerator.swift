@@ -228,7 +228,12 @@ public struct SwiftStringsGenerator: StringsGenerator {
 			writer.line("var isParsingParameter = false")
 			writer.line("var isAwaitingClosingCurlyBracket = false")
 			writer.line()
-			writer.line("for character in template.characters {")
+
+			switch version {
+			case .swift3: writer.line("for character in template.characters {")
+			case .swift4: writer.line("for character in template {")
+			}
+
 			writer.indent() {
 				writer.line("if isAwaitingClosingCurlyBracket && character != \"}\" {")
 				writer.indent() {
@@ -650,7 +655,7 @@ extension String {
 			return self
 		}
 
-		let breakpoint = characters.index(startIndex, offsetBy: 1)
+		let breakpoint = index(startIndex, offsetBy: 1)
 		return self[startIndex ..< breakpoint].uppercased() + self[breakpoint ..< endIndex]
 	}
 }

@@ -214,7 +214,7 @@ public struct StringsParser {
 			return Error(message: "\(message) - at position \(position) of '\(valueToParse)'")
 		}
 
-		for character in valueToParse.characters {
+		for character in valueToParse {
 			defer { position += 1 }
 
 			if isAwaitingClosingCurlyBracket && character != "}" {
